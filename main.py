@@ -47,7 +47,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-(TITLE, CATEGORY, WHO, ACCOUNT, AMOUNT, DATE) = range(6)
+(TITLE, CATEGORY, WHO, ACCOUNT, AMOUNT, CURRENCY, DATE) = range(7)
 
 
 async def start(update: Update, context: CallbackContext):
@@ -197,7 +197,8 @@ async def receive_amount(update: Update, context: CallbackContext):
     amount_text = update.message.text
     context.user_data['transaction_data']['amount'] = amount_text
 
-    return await ask_for_date(update, context)
+    # return await ask_for_date(update, context)
+    return await ask_for_currency(update, context)
 
 
 async def receive_date(update: Update, context: CallbackContext):
@@ -214,6 +215,54 @@ async def receive_date(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text("Transaction failed to add.")
     return ConversationHandler.END
+
+
+def get_currencies():
+    headers = {'Authorization': f'Token {API_TOKEN}'}
+    response = requests.get(API_BASE_URL + "/currency/",
+                            headers=headers,
+                            verify=False)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logger.error(f"Failed to fetch currencies: {response.status_code}")
+        return []
+
+
+async def ask_for_currency(update: Update, context: CallbackContext):
+    currencies = get_currencies()
+    keyboard = [
+        [InlineKeyboardButton(currency['title'],
+                              callback_data=f"currency_{currency['id']}")]
+        for currency in currencies
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Select a currency:",
+                                    reply_markup=reply_markup)
+    return CURRENCY
+
+
+async def receive_currency(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+
+    currency_id = query.data.split("_")[1]
+    context.user_data['transaction_data']['currency'] = currency_id
+
+    # Check if the query.message is not None before trying to reply or edit
+    if query.message:
+        # Edit the message to remove the inline keyboard
+        await query.edit_message_text(
+            text=f"Selected currency ID: {currency_id}\nPlease choose a date:",
+            reply_markup=None)  # Passing None will remove the keyboard
+    else:
+        logger.error("No message associated with the callback query")
+
+    # Now ask for the date
+    return await ask_for_date(update, context)
+
+
+
 
 
 def get_categories():
@@ -242,21 +291,21 @@ def post_transaction(data):
     response = requests.post(
         API_BASE_URL + "/transaction/",
         headers=headers, json=data, verify=False)
-    return response.status_code == 200
+    return response.status_code == 201
 
 
-def confirm_transaction(update: Update, context: CallbackContext):
-    """
-    Confirm the posting of a transaction.
+# def confirm_transaction(update: Update, context: CallbackContext):
+#     """
+#     Confirm the posting of a transaction.
 
-    Sends a success or failure message to the user.
-    """
-    data = context.user_data['transaction_data']
-    if post_transaction(data):
-        update.message.reply_text("Transaction successfully added.")
-    else:
-        update.message.reply_text("Transaction failed to add.")
-    return ConversationHandler.END
+#     Sends a success or failure message to the user.
+#     """
+#     data = context.user_data['transaction_data']
+#     if post_transaction(data):
+#         update.message.reply_text("Transaction successfully added.")
+#     else:
+#         update.message.reply_text("Transaction failed to add.")
+#     return ConversationHandler.END
 
 
 async def error(update: Update, context: CallbackContext):
@@ -380,11 +429,6 @@ def create_calendar(year, month):
 
 
 async def handle_calendar_callback(update: Update, context: CallbackContext):
-    """
-    Handle the user's interaction with the calendar.
-
-    Processes either date selection or navigation between months.
-    """
     query = update.callback_query
     callback_data = query.data
     await query.answer()
@@ -397,11 +441,20 @@ async def handle_calendar_callback(update: Update, context: CallbackContext):
         context.user_data['transaction_data']['date'] = (
             selected_date.strftime("%Y-%m-%d"))
         data = context.user_data['transaction_data']
-        if post_transaction(data):
-            await query.message.reply_text("Transaction successfully added.")
+
+        # Edit the message to remove the inline keyboard
+        if query.message:
+            if post_transaction(data):
+                await query.edit_message_text(
+                    text="Transaction successfully added.", reply_markup=None)
+            else:
+                await query.edit_message_text(
+                    text="Transaction failed to add.", reply_markup=None)
         else:
-            await query.message.reply_text("Transaction failed to add.")
+            logger.error("No message associated with the callback query")
+
         return ConversationHandler.END
+
     elif parts[0] == "calendar" and parts[1] == "month" and len(parts) == 4:
         year, month = map(int, parts[2:4])
         new_calendar = create_calendar(year, month)
@@ -416,8 +469,14 @@ async def ask_for_date(update: Update, context: CallbackContext):
     """
     today = datetime.today()
     calendar_markup = create_calendar(today.year, today.month)
-    await update.message.reply_text(
-        "Please choose a date:", reply_markup=calendar_markup)
+
+    # Check if the function is called after a callback query
+    if update.callback_query:
+        await update.callback_query.message.reply_text(
+            "Please choose a date:", reply_markup=calendar_markup)
+    else:
+        await update.message.reply_text(
+            "Please choose a date:", reply_markup=calendar_markup)
     return DATE
 
 
@@ -440,8 +499,10 @@ def main():
             ACCOUNT: [CallbackQueryHandler(handle_account_selection,
                                            pattern='^account_')],
             AMOUNT: [MessageHandler(filters.TEXT, receive_amount)],
-            DATE: [CallbackQueryHandler(
-                handle_calendar_callback, pattern='^calendar-')]
+            CURRENCY: [CallbackQueryHandler(receive_currency,
+                                            pattern='^currency_')],
+            DATE: [CallbackQueryHandler(handle_calendar_callback,
+                                        pattern='^calendar-')]
         },
         fallbacks=[CommandHandler('start', start)],
         per_chat=True,
@@ -454,6 +515,8 @@ def main():
     who_handler = CallbackQueryHandler(handle_who_selection, pattern='^who_')
     account_handler = CallbackQueryHandler(
         handle_account_selection, pattern='^account_')
+    currency_handler = CallbackQueryHandler(receive_currency,
+                                            pattern='^currency_')
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(conv_handler)
@@ -463,7 +526,7 @@ def main():
     application.add_handler(CallbackQueryHandler(
         handle_calendar_callback,
         pattern="^calendar-"))
-
+    application.add_handler(currency_handler)
     application.add_error_handler(error)
     application.run_polling()
 
