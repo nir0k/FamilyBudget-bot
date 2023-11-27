@@ -1,0 +1,6 @@
+version: '3'
+
+services:
+  backend:
+    image: terael/family-budget_bot
+    env_file: .env
