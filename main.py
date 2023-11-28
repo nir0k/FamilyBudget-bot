@@ -197,7 +197,6 @@ async def receive_amount(update: Update, context: CallbackContext):
     amount_text = update.message.text
     context.user_data['transaction_data']['amount'] = amount_text
 
-    # return await ask_for_date(update, context)
     return await ask_for_currency(update, context)
 
 
@@ -218,6 +217,16 @@ async def receive_date(update: Update, context: CallbackContext):
 
 
 def get_currencies():
+    """
+    Fetch the list of currencies from the API.
+
+    Sends a GET request to the API to retrieve available currencies.
+    On success, returns a JSON response; on failure, logs an error and returns
+    an empty list.
+
+    Returns:
+        list: A list of currency data, or an empty list if fetch fails.
+    """
     headers = {'Authorization': f'Token {API_TOKEN}'}
     response = requests.get(API_BASE_URL + "/currency/",
                             headers=headers,
@@ -230,6 +239,19 @@ def get_currencies():
 
 
 async def ask_for_currency(update: Update, context: CallbackContext):
+    """
+    Prompt the user to select a currency.
+
+    Retrieves available currencies and displays them using an inline keyboard.
+    Triggers `receive_currency` function upon selection.
+
+    Args:
+        update (Update): The incoming update.
+        context (CallbackContext): The context of the callback.
+
+    Returns:
+        int: The next state, CURRENCY, in the conversation.
+    """
     currencies = get_currencies()
     keyboard = [
         [InlineKeyboardButton(currency['title'],
@@ -243,26 +265,31 @@ async def ask_for_currency(update: Update, context: CallbackContext):
 
 
 async def receive_currency(update: Update, context: CallbackContext):
+    """
+    Handle the user's currency selection.
+
+    Captures the selected currency ID from the callback query and stores it
+    in the user's context. Prompts the user to select a date next.
+    Logs an error if no message is associated with the callback query.
+
+    Args:
+        update (Update): The incoming update.
+        context (CallbackContext): The context of the callback.
+    """
     query = update.callback_query
     await query.answer()
 
     currency_id = query.data.split("_")[1]
     context.user_data['transaction_data']['currency'] = currency_id
 
-    # Check if the query.message is not None before trying to reply or edit
     if query.message:
-        # Edit the message to remove the inline keyboard
         await query.edit_message_text(
             text=f"Selected currency ID: {currency_id}\nPlease choose a date:",
-            reply_markup=None)  # Passing None will remove the keyboard
+            reply_markup=None)
     else:
         logger.error("No message associated with the callback query")
 
-    # Now ask for the date
     return await ask_for_date(update, context)
-
-
-
 
 
 def get_categories():
@@ -292,20 +319,6 @@ def post_transaction(data):
         API_BASE_URL + "/transaction/",
         headers=headers, json=data, verify=False)
     return response.status_code == 201
-
-
-# def confirm_transaction(update: Update, context: CallbackContext):
-#     """
-#     Confirm the posting of a transaction.
-
-#     Sends a success or failure message to the user.
-#     """
-#     data = context.user_data['transaction_data']
-#     if post_transaction(data):
-#         update.message.reply_text("Transaction successfully added.")
-#     else:
-#         update.message.reply_text("Transaction failed to add.")
-#     return ConversationHandler.END
 
 
 async def error(update: Update, context: CallbackContext):
@@ -429,6 +442,22 @@ def create_calendar(year, month):
 
 
 async def handle_calendar_callback(update: Update, context: CallbackContext):
+    """
+    Process the user's interaction with the inline calendar.
+
+    Handles two types of interactions: selection of a specific date and
+    navigation between months. For date selection, it stores the selected date
+    in the user's context and attempts to post the transaction. For month
+    navigation, it updates the calendar to display the selected month.
+
+    Args:
+        update (Update): The incoming update.
+        context (CallbackContext): The context of the callback.
+
+    Returns:
+        int: The END state of the conversation if a date is selected, or
+             maintains the current state for month navigation.
+    """
     query = update.callback_query
     callback_data = query.data
     await query.answer()
@@ -470,7 +499,6 @@ async def ask_for_date(update: Update, context: CallbackContext):
     today = datetime.today()
     calendar_markup = create_calendar(today.year, today.month)
 
-    # Check if the function is called after a callback query
     if update.callback_query:
         await update.callback_query.message.reply_text(
             "Please choose a date:", reply_markup=calendar_markup)
