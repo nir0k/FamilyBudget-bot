@@ -33,8 +33,6 @@ from telegram.ext import (Application, CallbackContext, CallbackQueryHandler,
 import modules.constants
 from modules.api import ask_for_currency, get_accounts, post_transaction
 from modules.auth import authenticate_user
-# from modules.constants import (ACCOUNT, AMOUNT, CATEGORY, CURRENCY, DATE,
-#                                TITLE, WHO, set_api_base_url)
 from modules.handlers import (handle_account_selection,
                               handle_calendar_callback,
                               handle_category_selection, handle_who_selection)
@@ -83,6 +81,29 @@ async def start(update: Update, context: CallbackContext):
             'Please choose:', reply_markup=reply_markup)
     else:
         await update.message.reply_text("Authentication failed.")
+
+
+async def cancel(update: Update, context: CallbackContext):
+    """
+    Handle the /cancel command to abort an ongoing transaction process.
+
+    This asynchronous function is triggered when a user sends the /cancel
+    command. It sends a message to the user indicating that the transaction
+    addition has been cancelled. This function also terminates the current
+    conversation, bringing the user back to the initial state of the bot's
+    conversation flow.
+
+    Args:
+        update (Update): The incoming update that triggered the command.
+        context (CallbackContext): The context of the callback, providing
+        additional information and capabilities.
+
+    Returns:
+        int: The end state of the conversation handler, signaling the
+        termination of the current conversation flow.
+    """
+    await update.message.reply_text('Transaction addition cancelled.')
+    return ConversationHandler.END
 
 
 async def receive_category(update: Update, context: CallbackContext):
@@ -246,7 +267,8 @@ def main():
                 CallbackQueryHandler(handle_calendar_callback,
                                      pattern='^calendar-')]
         },
-        fallbacks=[CommandHandler('start', start)],
+        # fallbacks=[CommandHandler('start', start)],
+        fallbacks=[CommandHandler('cancel', cancel)],
         per_chat=True,
         per_user=True,
         per_message=False
@@ -259,6 +281,7 @@ def main():
         handle_account_selection, pattern='^account_')
     currency_handler = CallbackQueryHandler(receive_currency,
                                             pattern='^currency_')
+    cancel_handler = CommandHandler('cancel', cancel)
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(conv_handler)
@@ -269,6 +292,7 @@ def main():
         handle_calendar_callback,
         pattern="^calendar-"))
     application.add_handler(currency_handler)
+    application.add_handler(cancel_handler)
     application.add_error_handler(error)
     application.run_polling()
 

@@ -23,11 +23,14 @@ Functions:
 import logging
 
 import requests
+import urllib3
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 
 import modules.constants
 from modules.user_management import get_user_mapping
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def get_accounts(context):

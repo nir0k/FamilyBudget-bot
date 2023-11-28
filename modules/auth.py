@@ -20,8 +20,11 @@ Functions:
 import logging
 
 import requests
+import urllib3
 
 import modules.constants
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def authenticate_user(telegram_user_id):
