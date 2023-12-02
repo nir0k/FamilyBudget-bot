@@ -33,7 +33,7 @@ from modules.user_management import get_user_mapping
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def get_accounts(context):
+def get_accounts(context, user_id=None):
     """
     Fetch and return the list of accounts from the API.
 
@@ -49,11 +49,13 @@ def get_accounts(context):
         list: A list of account details, each including the username of
         the owner.
     """
+    url = f"{modules.constants.API_BASE_URL}/account/"
+    if user_id is not None:
+        url += f"?owner={user_id}"
+
     user_mapping = get_user_mapping(context)
     headers = {'Authorization': f'Token {context.user_data.get("api_token")}'}
-    response = requests.get(modules.constants.API_BASE_URL + "/account/",
-                            headers=headers,
-                            verify=False)
+    response = requests.get(url, headers=headers, verify=False)
     if response.status_code == 200:
         accounts = response.json()
         for account in accounts:
@@ -143,3 +145,46 @@ def post_transaction(data, context):
         modules.constants.API_BASE_URL + "/transaction/",
         headers=headers, json=data, verify=False)
     return response.status_code == 201
+
+
+def get_user_details(context):
+    """
+    Fetch the user's details from the API.
+
+    Args:
+        context (CallbackContext): Context object providing additional
+                                   information.
+
+    Returns:
+        dict: User details including the user ID.
+    """
+    headers = {'Authorization': f'Token {context.user_data.get("api_token")}'}
+    response = requests.get(modules.constants.API_BASE_URL + "/users/me/",
+                            headers=headers,
+                            verify=False)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+
+def get_family_status(context):
+    """
+    Fetch the family status from the API.
+
+    Args:
+        context (CallbackContext): Context object providing additional
+                                   information.
+
+    Returns:
+        list: A list of family status data.
+    """
+    headers = {'Authorization': f'Token {context.user_data.get("api_token")}'}
+    response = requests.get(modules.constants.API_BASE_URL + "/family-state/",
+                            headers=headers,
+                            verify=False)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Failed to fetch family status: {response.status_code}")
+        return []

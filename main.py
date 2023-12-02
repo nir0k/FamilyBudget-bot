@@ -33,9 +33,10 @@ from telegram.ext import (Application, CallbackContext, CallbackQueryHandler,
 import modules.constants
 from modules.api import ask_for_currency, get_accounts, post_transaction
 from modules.auth import authenticate_user
-from modules.handlers import (handle_account_selection,
+from modules.handlers import (handle_account_selection, handle_account_status,
                               handle_calendar_callback,
-                              handle_category_selection, handle_who_selection)
+                              handle_category_selection, handle_family_status,
+                              handle_profile, handle_who_selection)
 from modules.transactions import add_transaction, receive_title
 from modules.user_management import get_users
 from modules.utils import create_calendar
@@ -267,7 +268,6 @@ def main():
                 CallbackQueryHandler(handle_calendar_callback,
                                      pattern='^calendar-')]
         },
-        # fallbacks=[CommandHandler('start', start)],
         fallbacks=[CommandHandler('cancel', cancel)],
         per_chat=True,
         per_user=True,
@@ -277,22 +277,27 @@ def main():
     category_handler = CallbackQueryHandler(
         handle_category_selection, pattern='^category_')
     who_handler = CallbackQueryHandler(handle_who_selection, pattern='^who_')
-    account_handler = CallbackQueryHandler(
-        handle_account_selection, pattern='^account_')
     currency_handler = CallbackQueryHandler(receive_currency,
                                             pattern='^currency_')
     cancel_handler = CommandHandler('cancel', cancel)
+    account_status_handler = CallbackQueryHandler(handle_account_status,
+                                                  pattern='^account_status$')
+    profile_handler = CallbackQueryHandler(handle_profile, pattern='^profile$')
+    family_status_handler = CallbackQueryHandler(handle_family_status,
+                                                 pattern='^family_status$')
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(conv_handler)
     application.add_handler(category_handler)
     application.add_handler(who_handler)
-    application.add_handler(account_handler)
+    application.add_handler(account_status_handler)
     application.add_handler(CallbackQueryHandler(
         handle_calendar_callback,
         pattern="^calendar-"))
     application.add_handler(currency_handler)
+    application.add_handler(profile_handler)
     application.add_handler(cancel_handler)
+    application.add_handler(family_status_handler)
     application.add_error_handler(error)
     application.run_polling()
 

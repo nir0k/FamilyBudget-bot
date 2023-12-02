@@ -30,7 +30,7 @@ MyFamilyBudget Telegram Bot is an interactive bot designed for Telegram users to
 Run main.py to start the bot. The bot will be live on your Telegram account, and you can interact with it using the predefined commands.
 
 ## Docker Support
-This project includes a docker-compose.production.yml file for easy deployment using Docker.
+This project includes a docker-compose.production.yml file for easy deployment usgit ing Docker.
 
 ## Contributing
 Contributions to the MyFamilyBudget Telegram Bot are welcome. Please read our contribution guidelines before submitting your pull request.
@@ -40,8 +40,3 @@ This project is licensed under the [LICENSE] - see the LICENSE file for details.
 
 ## Acknowledgements
 Special thanks to everyone who contributed to the development and maintenance of this project.
-
-### Need create:
-- Fetch Account status
-- Fetch Family status
-- Fetch Profile
