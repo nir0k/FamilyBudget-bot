@@ -37,7 +37,9 @@ async def add_transaction(update: Update, context: CallbackContext):
     """
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(text="Enter the title of the transaction:")
+    await query.edit_message_text(text=(
+        "Add new transaction:\n"
+        "  Enter the title of the transaction:"))
     return TITLE
 
 

@@ -127,7 +127,7 @@ async def handle_account_status(update: Update, context: CallbackContext):
 
     user_details = get_user_details(context)
     if not user_details:
-        await query.message.reply_text("Unable to fetch user details.")
+        await query.message.edit_text("Unable to fetch user details.")
         return
 
     currency_data = get_currencies(context)
@@ -137,15 +137,15 @@ async def handle_account_status(update: Update, context: CallbackContext):
     user_id = user_details['id']
     account_data = get_accounts(context, user_id=user_id)
     if not account_data:
-        await query.message.reply_text("No account data available.")
+        await query.message.edit_text("No account data available.")
         return
 
     response_message = "\n".join([
-        f"{account['title']}: {account['balance']}"
+        f"  {account['title']}: {account['balance']}"
         f" {currency_map.get(account['currency'], 'Unknown')}"
         for account in account_data
     ])
-    await query.message.reply_text(response_message)
+    await query.message.edit_text("Account status:\n" + response_message)
 
 
 async def handle_calendar_callback(update: Update, context: CallbackContext):
@@ -227,14 +227,15 @@ async def handle_profile(update: Update, context: CallbackContext):
                       for member_id in user_details['family']['members']]
 
     response_message = (
-        f"Username: {user_details['username']}\n"
-        f"First Name: {user_details['first_name']}\n"
-        f"Last Name: {user_details.get('last_name', '-')}\n"
-        f"Email: {user_details['email']}\n"
-        f"Telegram User ID: {update.effective_user.id}\n"
-        f"Role: {user_details['role']}\n"
-        f"Family: {user_details['family']['title']}\n"
-        f"  - Members: {', '.join(family_members)}"
+        f"Profile:\n"
+        f"  Username: {user_details['username']}\n"
+        f"  First Name: {user_details['first_name']}\n"
+        f"  Last Name: {user_details.get('last_name', '-')}\n"
+        f"  Email: {user_details['email']}\n"
+        f"  Telegram User ID: {update.effective_user.id}\n"
+        f"  Role: {user_details['role']}\n"
+        f"  Family: {user_details['family']['title']}\n"
+        f"    - Members: {', '.join(family_members)}"
     )
 
     await query.message.edit_text(response_message)
@@ -261,9 +262,10 @@ async def handle_family_status(update: Update, context: CallbackContext):
         await query.message.edit_text("Unable to fetch family status.")
         return
 
-    # Assuming there's only one family status in the response
     status = family_status[0]
-    response_message = (f"Title: {status['title']}\n"
-                        f"Current Balance: {status['current']}")
+    response_message = (f"Family status:\n"
+                        f"  Title: {status['title']}\n"
+                        f"  Current Balance: {status['current']}"
+                        f" {status['currency']}")
 
     await query.message.edit_text(response_message)

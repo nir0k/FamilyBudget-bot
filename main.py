@@ -66,7 +66,6 @@ async def start(update: Update, context: CallbackContext):
     token = authenticate_user(telegram_user_id)
     if token:
         context.user_data['api_token'] = token
-        await update.message.reply_text("Authenticated successfully.")
         keyboard = [
             [InlineKeyboardButton("Add Transaction",
                                   callback_data='add_transaction')],
